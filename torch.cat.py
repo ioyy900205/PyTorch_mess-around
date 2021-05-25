@@ -41,6 +41,14 @@ A = torch.ones(2,3,2) #2x2x3的张量（矩阵）
 print("A:",A)
 B=2*torch.ones(2,3,4) #4x3的张量（矩阵） 
 print("B:",B)
-C=torch.cat((A,B),2)#按维数 2 拼接
+C=torch.cat([A,B],2)#按维数 2 拼接
 print("C:",C)
 print(C.size())
+
+torch.manual_seed(0)
+
+x_2_input = torch.randn(8,3,24,24)
+c = x_2_input[7]
+print(c)
+print(c.size())
+
