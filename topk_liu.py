@@ -1,7 +1,7 @@
 '''
 Date: 2021-05-24 18:57:05
 LastEditors: Liuliang
-LastEditTime: 2021-05-25 10:58:54
+LastEditTime: 2021-05-26 10:35:18
 Description: 
 '''
 import torch
@@ -33,20 +33,25 @@ pred = torch.tensor([[56, 13, 96, 27, 96, 30, 66, 96, 88, 99, 27, 13, 13, 96, 96
          87, 26, 98, 13, 41, 41, 96, 99, 99,  1]], device='cuda:0')
 
 
-print("target:{}".format(target.size()))
-print("pred:{}".format(pred.size()))
+# print("target:{}".format(target.size()))
+# print("pred:{}".format(pred.size()))
 
 
-view_target = target.view(1, -1)
+# view_target = target.view(1, -1)
 
-print("view_target:{}".format(view_target.size()))
+# print("view_target:{}".format(view_target.size()))
 
-exp_target = view_target.expand_as(pred)
+# exp_target = view_target.expand_as(pred)
 
-print("exp_target:{}".format(exp_target.size()))
+# print("exp_target:{}".format(exp_target.size()))
 
-correct = pred.eq(exp_target)
-print(correct.size())
+# correct = pred.eq(exp_target)
+# print(correct.size())
 
-correct_k = correct[:5].view(-1)
-print(correct_k.size())
+# correct_k = correct[:5].view(-1)
+# print(correct_k.size())
+
+print(pred)
+print(pred.size())
+print(pred[1])
+
