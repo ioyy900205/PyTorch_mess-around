@@ -12,3 +12,4 @@ f.close()
 c.sort()
 len1 = int(len(c)/2)
 print(c[len1])
+
