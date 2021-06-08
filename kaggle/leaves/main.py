@@ -1,7 +1,7 @@
 '''
 Date: 2021-06-08 10:04:21
 LastEditors: Liuliang
-LastEditTime: 2021-06-08 17:21:53
+LastEditTime: 2021-06-08 17:27:16
 Description: main
 '''
 
@@ -183,7 +183,7 @@ def res_model(num_classes, feature_extract = False, use_pretrained=True):
     return model_ft
 
 # 超参数, 这里为了演示就训练5轮看看
-learning_rate = 1e-3
+learning_rate = 2e-4
 weight_decay = 1e-3
 num_epoch = 18
 model_path = './pre_res_model.ckpt'
@@ -199,9 +199,9 @@ model = model.to(device)
 criterion = nn.CrossEntropyLoss()
 
 # Initialize optimizer, you may fine-tune some hyperparameters such as learning rate on your own.
-# optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate, weight_decay=weight_decay)
-optimizer = torch.optim.SGD(model.parameters(),lr=learning_rate)
-# scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 10, gamma=0.1, last_epoch=-1)
+optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate, weight_decay=weight_decay)
+# optimizer = torch.optim.SGD(model.parameters(),lr=learning_rate)
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 10, gamma=0.1, last_epoch=-1)
 # The number of training epochs.
 n_epochs = num_epoch
 
@@ -241,7 +241,7 @@ for epoch in range(n_epochs):
         train_loss.append(loss.item())
         train_accs.append(acc)
         
-    # scheduler.step()    
+    scheduler.step()    
     # The average loss and accuracy of the training set is the average of the recorded values.
     train_loss = sum(train_loss) / len(train_loss)
     train_acc = sum(train_accs) / len(train_accs)
