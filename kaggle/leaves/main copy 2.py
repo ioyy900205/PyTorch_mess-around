@@ -1,7 +1,7 @@
 '''
 Date: 2021-06-08 10:04:21
 LastEditors: Liuliang
-LastEditTime: 2021-06-09 18:29:51
+LastEditTime: 2021-06-16 09:50:38
 Description: main
 '''
 
@@ -24,6 +24,32 @@ from torch.utils.tensorboard import SummaryWriter
 import ipdb
 import albumentations
 import cv2
+import ttach as tta
+
+#CutMix方法
+"""输入为：样本的size和生成的随机lamda值"""
+def rand_bbox(size, lam):
+    W = size[2]
+    H = size[3]
+    """1.论文里的公式2，求出B的rw,rh"""
+    cut_rat = np.sqrt(1. - lam)
+    cut_w = np.int(W * cut_rat)
+    cut_h = np.int(H * cut_rat)
+ 
+    # uniform
+    """2.论文里的公式2，求出B的rx,ry（bbox的中心点）"""
+    cx = np.random.randint(W)
+    cy = np.random.randint(H)
+    #限制坐标区域不超过样本大小
+ 
+    bbx1 = np.clip(cx - cut_w // 2, 0, W)
+    bby1 = np.clip(cy - cut_h // 2, 0, H)
+    bbx2 = np.clip(cx + cut_w // 2, 0, W)
+    bby2 = np.clip(cy + cut_h // 2, 0, H)
+    """3.返回剪裁B区域的坐标值"""
+    return bbx1, bby1, bbx2, bby2
+
+
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 def get_device():
@@ -64,18 +90,19 @@ class LeavesData(Dataset):
 
         # 读取 csv 文件
         # 利用pandas读取csv文件
-        self.data_info = pd.read_csv(csv_path, header=None)  #header=None是去掉表头部分
+        self.data_info = pd.read_csv(csv_path)  #header=None是去掉表头部分
+        self.data_info = self.data_info.sample(frac=1.0)
         # 计算 length
-        self.data_len = len(self.data_info.index) - 1
+        self.data_len = len(self.data_info.index)
         self.train_len = int(self.data_len * (1 - valid_ratio))
         
         if mode == 'train':
             # 第一列包含图像文件的名称
-            self.train_image = np.asarray(self.data_info.iloc[1:, 0])
-            # self.train_image = np.asarray(self.data_info.iloc[1:self.train_len, 0])  #self.data_info.iloc[1:,0]表示读取第一列，从第二行开始到train_len
+            # self.train_image = np.asarray(self.data_info.iloc[1:, 0])
+            self.train_image = np.asarray(self.data_info.iloc[0:self.train_len, 0])  #self.data_info.iloc[1:,0]表示读取第一列，从第二行开始到train_len
             # 第二列是图像的 label
-            self.train_label = np.asarray(self.data_info.iloc[1:, 1])
-            # self.train_label = np.asarray(self.data_info.iloc[1:self.train_len, 1])
+            # self.train_label = np.asarray(self.data_info.iloc[1:, 1])
+            self.train_label = np.asarray(self.data_info.iloc[0:self.train_len, 1])
 
             self.image_arr = self.train_image 
             self.label_arr = self.train_label
@@ -109,14 +136,14 @@ class LeavesData(Dataset):
             transform = transforms.Compose([
                 # transforms.CenterCrop(224),
                 # transforms.TenCrop(224, vertical_flip=False),
-                # transforms.Resize((224, 224)),
+                transforms.Resize((224, 224)),
+                transforms.CenterCrop(size=224),
                 # transforms.TenCrop
-                transforms.RandomCrop(224),
-                transforms.RandomVerticalFlip(p=0.5) ,
-                transforms.RandomHorizontalFlip(p=0.5),              
+                # transforms.RandomCrop(224),
+                # transforms.RandomVerticalFlip() ,
                 # transforms.RandomResizedCrop(size=224, scale=(0.8, 1.0)),
                 # transforms.RandomRotation(degrees=15),
-                #transforms.RandomHorizontalFlip(),
+                # transforms.RandomHorizontalFlip(),
                 #transforms.CenterCrop(size=224),
                 transforms.ToTensor(),
                 # transforms.Normalize([0.485, 0.456, 0.406],[0.229, 0.224, 0.225])
@@ -158,7 +185,7 @@ img_path = '/home/liuliang/leaves/'
 train_dataset = LeavesData(train_path, img_path, mode='train')
 val_dataset = LeavesData(train_path, img_path, mode='valid')
 test_dataset = LeavesData(test_path, img_path, mode='test')
-batch_size = 224
+batch_size = 64
 # 定义data loader
 train_loader = torch.utils.data.DataLoader(
         dataset=train_dataset,
@@ -193,20 +220,22 @@ def set_parameter_requires_grad(model, feature_extracting):
 
 
 
-# resnet152模型
+# resnext101_32x8d
 def res_model(num_classes, feature_extract = False, use_pretrained=True):
 
-    model_ft = models.resnet50(pretrained=use_pretrained)
+    model_ft = models.resnext101_32x8d(pretrained=use_pretrained)
     set_parameter_requires_grad(model_ft, feature_extract)
     num_ftrs = model_ft.fc.in_features
     model_ft.fc = nn.Sequential(nn.Linear(num_ftrs, num_classes))
 
     return model_ft
 
-# 超参数, 这里为了演示就训练5轮看看
-learning_rate = 1e-4
+# 超参数
+learning_rate = 3e-4
 weight_decay = 1e-3
 num_epoch = 300
+beta = 0.9
+cutmix_prob = 0.9
 model_path = './pre_res_model.ckpt'
 
 # torch.distributed.init_process_group(backend="nccl")
@@ -222,7 +251,7 @@ criterion = nn.CrossEntropyLoss()
 # Initialize optimizer, you may fine-tune some hyperparameters such as learning rate on your own.
 optimizer = torch.optim.AdamW(model.parameters(), lr = learning_rate, weight_decay=0.02)
 # optimizer = torch.optim.SGD(model.parameters(),lr=learning_rate)
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 30, eta_min=0, last_epoch=-1)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 10, eta_min=1e-6, last_epoch=-1)
 # The number of training epochs.
 n_epochs = num_epoch
 
@@ -241,11 +270,37 @@ for epoch in range(n_epochs):
         imgs, labels = batch
         imgs = imgs.to(device)
         labels = labels.to(device)
-        # Forward the data. (Make sure data and model are on the same device.)
-        logits = model(imgs)
-        # Calculate the cross-entropy loss.
-        # We don't need to apply softmax before computing cross-entropy as it is done automatically.
-        loss = criterion(logits, labels)
+        
+        r = np.random.rand(1)
+
+        if beta > 0 and r < cutmix_prob:
+            # generate mixed sample
+            """1.设定lamda的值，服从beta分布"""
+            lam = np.random.beta(beta, beta)
+            """2.找到两个随机样本"""
+            rand_index = torch.randperm(imgs.size()[0]).cuda()
+            target_a = labels#一个batch
+            target_b = labels[rand_index] #batch中的某一张
+            """3.生成剪裁区域B"""
+            bbx1, bby1, bbx2, bby2 = rand_bbox(imgs.size(), lam)
+            """4.将原有的样本A中的B区域，替换成样本B中的B区域"""
+            imgs[:, :, bbx1:bbx2, bby1:bby2] = imgs[rand_index, :, bbx1:bbx2, bby1:bby2]
+            # adjust lambda to exactly match pixel ratio
+            """5.根据剪裁区域坐标框的值调整lam的值"""
+            lam = 1 - ((bbx2 - bbx1) * (bby2 - bby1) / (imgs.size()[-1] * imgs.size()[-2]))
+            # compute output
+            """6.将生成的新的训练样本丢到模型中进行训练"""
+            logits = model(imgs)
+            """7.按lamda值分配权重"""
+            loss = criterion(logits, target_a) * lam + criterion(logits, target_b) * (1. - lam)
+        else:
+                # compute output
+            # Forward the data. (Make sure data and model are on the same device.)
+            logits = model(imgs)
+            # Calculate the cross-entropy loss.
+            # We don't need to apply softmax before computing cross-entropy as it is done automatically.
+            loss = criterion(logits, labels)
+
         
         
         # Gradients stored in the parameters in the previous step should be cleared out first.

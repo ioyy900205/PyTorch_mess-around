@@ -1,7 +1,7 @@
 '''
 Date: 2021-06-08 10:04:21
 LastEditors: Liuliang
-LastEditTime: 2021-06-08 16:36:16
+LastEditTime: 2021-06-15 21:57:36
 Description: main
 '''
 
@@ -62,7 +62,9 @@ class LeavesData(Dataset):
         # 计算 length
         self.data_len = len(self.data_info.index) - 1
         self.train_len = int(self.data_len * (1 - valid_ratio))
+
         
+
         if mode == 'train':
             # 第一列包含图像文件的名称
             self.train_image = np.asarray(self.data_info.iloc[1:self.train_len, 0])  #self.data_info.iloc[1:,0]表示读取第一列，从第二行开始到train_len
@@ -160,7 +162,7 @@ val_loader = torch.utils.data.DataLoader(
     )
 test_loader = torch.utils.data.DataLoader(
         dataset=test_dataset,
-        batch_size=224, 
+        batch_size=64, 
         shuffle=False,
         num_workers=8,
         pin_memory=True
@@ -175,7 +177,7 @@ def set_parameter_requires_grad(model, feature_extracting):
 # resnet152模型
 def res_model(num_classes, feature_extract = False, use_pretrained=True):
 
-    model_ft = models.resnet50(pretrained=use_pretrained)
+    model_ft = models.resnext101_32x8d(pretrained=use_pretrained)
     set_parameter_requires_grad(model_ft, feature_extract)
     num_ftrs = model_ft.fc.in_features
     model_ft.fc = nn.Sequential(nn.Linear(num_ftrs, num_classes))
@@ -186,12 +188,12 @@ def res_model(num_classes, feature_extract = False, use_pretrained=True):
 model_path = './pre_res_model.ckpt'
 
 
-saveFileName = './submission2.csv'
+saveFileName = './submission.csv'
 
 ## predict
 model = res_model(176)
 
-print(model)
+# print(model)
 # input()
 # create model and load weights from checkpoint
 model = nn.DataParallel(model).cuda()
