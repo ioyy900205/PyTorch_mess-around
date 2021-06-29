@@ -1,7 +1,7 @@
 '''
 Date: 2021-06-08 10:04:21
 LastEditors: Liuliang
-LastEditTime: 2021-06-16 09:50:38
+LastEditTime: 2021-06-29 09:16:55
 Description: main
 '''
 
@@ -233,10 +233,10 @@ def res_model(num_classes, feature_extract = False, use_pretrained=True):
 # 超参数
 learning_rate = 3e-4
 weight_decay = 1e-3
-num_epoch = 300
+num_epoch = 50
 beta = 0.9
 cutmix_prob = 0.9
-model_path = './pre_res_model.ckpt'
+model_path = './pre_res_model2.ckpt'
 
 # torch.distributed.init_process_group(backend="nccl")
 model = res_model(176)

@@ -1,7 +1,7 @@
 '''
 Date: 2021-06-08 10:04:21
 LastEditors: Liuliang
-LastEditTime: 2021-06-15 21:57:36
+LastEditTime: 2021-06-29 11:07:59
 Description: main
 '''
 
@@ -185,10 +185,10 @@ def res_model(num_classes, feature_extract = False, use_pretrained=True):
     return model_ft
 
 
-model_path = './pre_res_model.ckpt'
+model_path = './pre_res_model2.ckpt'
 
 
-saveFileName = './submission.csv'
+saveFileName = './submission2.csv'
 
 ## predict
 model = res_model(176)
@@ -197,6 +197,7 @@ model = res_model(176)
 # input()
 # create model and load weights from checkpoint
 model = nn.DataParallel(model).cuda()
+# model = model.cuda()
 model.load_state_dict(torch.load(model_path))
 
 
