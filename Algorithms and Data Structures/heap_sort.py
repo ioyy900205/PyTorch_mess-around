@@ -1,7 +1,7 @@
 '''
 Date: 2021-06-22 17:16:25
 LastEditors: Liuliang
-LastEditTime: 2021-06-28 10:22:00
+LastEditTime: 2021-07-05 17:11:39
 Description: heap
 '''
 
@@ -59,6 +59,6 @@ list = [x for x in range(10)]
 import random
 random.shuffle(list)
 print(list)
-heap_sort(list)
-print(list)
-# topk(list,10)
+# heap_sort(list)
+# print(list)
+topk(list,5)
