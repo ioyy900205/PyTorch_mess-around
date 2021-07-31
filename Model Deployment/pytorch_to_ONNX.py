@@ -1,7 +1,7 @@
 '''
 Date: 2021-07-21 09:45:34
 LastEditors: Liuliang
-LastEditTime: 2021-07-21 11:21:25
+LastEditTime: 2021-07-22 10:39:29
 Description: 
 '''
 # Some standard imports
@@ -28,6 +28,7 @@ class SuperResolutionNet(nn.Module):
         self.conv3 = nn.Conv2d(64, 32, (3, 3), (1, 1), (1, 1))
         self.conv4 = nn.Conv2d(32, upscale_factor ** 2, (3, 3), (1, 1), (1, 1))
         self.pixel_shuffle = nn.PixelShuffle(upscale_factor)
+        # self.conv5 = nn.Conv2d(64, 32, (3, 3), (1, 1), (1, 1))
 
         self._initialize_weights()
 
@@ -44,9 +45,11 @@ class SuperResolutionNet(nn.Module):
         init.orthogonal_(self.conv3.weight, init.calculate_gain('relu'))
         init.orthogonal_(self.conv4.weight)
 
+
 # Create the super-resolution model by using the above model definition.
 torch_model = SuperResolutionNet(upscale_factor=3)
 
+print(torch_model)
 
 # Load pretrained model weights
 model_url = 'https://s3.amazonaws.com/pytorch/test_data/export/superres_epoch100-44c6958e.pth'
@@ -117,4 +120,21 @@ to_tensor = transforms.ToTensor()
 img_y = to_tensor(img_y)
 
 img_y.unsqueeze_(0)
+
+ort_inputs = {ort_session.get_inputs()[0].name: to_numpy(img_y)}
+ort_outs = ort_session.run(None, ort_inputs)
+img_out_y = ort_outs[0]
+
+img_out_y = Image.fromarray(np.uint8((img_out_y[0] * 255.0).clip(0, 255)[0]), mode='L')
+
+# get the output image follow post-processing step from PyTorch implementation
+final_img = Image.merge(
+    "YCbCr", [
+        img_out_y,
+        img_cb.resize(img_out_y.size, Image.BICUBIC),
+        img_cr.resize(img_out_y.size, Image.BICUBIC),
+    ]).convert("RGB")
+
+# Save the image, we will compare this with the output image from mobile device
+final_img.save("cat_superres_with_ort.jpg")
 
