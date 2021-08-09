@@ -1,7 +1,7 @@
 '''
 Date: 2021-06-22 10:25:01
 LastEditors: Liuliang
-LastEditTime: 2021-06-22 14:16:37
+LastEditTime: 2021-08-09 16:40:55
 Description: insert
 '''
 
@@ -22,7 +22,6 @@ def insert_sort(li):
             j -= 1
         li[j+1] = tmp
     
-
 
 
 
