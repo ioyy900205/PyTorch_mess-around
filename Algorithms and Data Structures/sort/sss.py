@@ -1,7 +1,7 @@
 '''
 Date: 2021-08-09 16:43:36
 LastEditors: Liuliang
-LastEditTime: 2021-08-10 16:24:05
+LastEditTime: 2021-08-09 18:25:15
 Description: 
 '''
 import random
@@ -13,14 +13,15 @@ c = random_int_list(0,10,10)
 print(c)
 
 
-def iss(nums):
+def sss(nums):
     n = len(nums)
-    for i in range(1,n):
-        while i > 0 and nums[i-1] > nums[i]:
-            nums[i-1],nums[i] = nums[i], nums[i-1]
-            i -= 1
+    for i in range(n): 
+        for j in range(i,n):
+            if nums[i] > nums[j]:
+                nums[i], nums[j] = nums[j], nums[i]
+        print(nums)
     return nums
 
-d = iss(c)
-print(d)
+d = sss(c)
+# print(d)
             

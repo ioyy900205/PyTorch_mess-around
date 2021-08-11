@@ -2,3 +2,4 @@
 *.ckpt
 *.onnx
 cmake-examples-Chinese/
+cmake-examples/
