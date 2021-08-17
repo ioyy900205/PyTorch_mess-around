@@ -1,7 +1,7 @@
 '''
 Date: 2021-08-10 14:12:17
 LastEditors: Liuliang
-LastEditTime: 2021-08-10 15:01:12
+LastEditTime: 2021-08-17 14:08:50
 Description: onnx在imagenet上的推理验证
 '''
 import argparse
@@ -10,6 +10,8 @@ import random
 import shutil
 import time
 import warnings
+
+
 from Average_ import AverageMeter
 from Progress_ import ProgressMeter
 import torch
@@ -25,6 +27,11 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision.models as models
 import onnxruntime
+import numpy as np
+import ncnn
+from ncnn.model_zoo.model_store import get_model_file
+
+
 # ================================================================== #
 #                说明：设置随机数，保证结果可以复现                                             
 # ================================================================== #	
@@ -46,7 +53,7 @@ normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
 val_loader = torch.utils.data.DataLoader(
         datasets.ImageFolder(valdir, transforms.Compose([
             transforms.Resize(256),
-            transforms.CenterCrop(224),
+            transforms.CenterCrop(227),
             transforms.ToTensor(),
             normalize,
         ])),
@@ -62,70 +69,54 @@ criterion = nn.CrossEntropyLoss()
 #                说明：定义模型                                             
 # ================================================================== #	
 
-class ONNXModel():
-    def __init__(self, onnx_path):
-        """
-        :param onnx_path:
-        """
-        self.onnx_session = onnxruntime.InferenceSession(onnx_path)
-        self.input_name = self.get_input_name(self.onnx_session)
-        self.output_name = self.get_output_name(self.onnx_session)
-        print("input_name:{}".format(self.input_name))
-        print("output_name:{}".format(self.output_name))
+class SqueezeNet:
+    def __init__(self, target_size=224, num_threads=1, use_gpu=False):
+        self.target_size = target_size
+        self.num_threads = num_threads
+        self.use_gpu = use_gpu
 
-    def get_output_name(self, onnx_session):
-        """
-        output_name = onnx_session.get_outputs()[0].name
-        :param onnx_session:
-        :return:
-        """
-        output_name = []
-        for node in onnx_session.get_outputs():
-            output_name.append(node.name)
-        return output_name
+        self.mean_vals = [104.0, 117.0, 123.0]
+        self.norm_vals = []
 
-    def get_input_name(self, onnx_session):
-        """
-        input_name = onnx_session.get_inputs()[0].name
-        :param onnx_session:
-        :return:
-        """
-        input_name = []
-        for node in onnx_session.get_inputs():
-            input_name.append(node.name)
-        return input_name
+        self.net = ncnn.Net()
+        self.net.opt.use_vulkan_compute = self.use_gpu
+        
+        self.net.load_param("/home/liuliang/.ncnn/models/resnet50.param")
+        self.net.load_model("/home/liuliang/.ncnn/models/resnet50.bin")
 
-    def get_input_feed(self, input_name, image_numpy):
-        """
-        input_feed={self.input_name: image_numpy}
-        :param input_name:
-        :param image_numpy:
-        :return:
-        """
-        input_feed = {}
-        for name in input_name:
-            input_feed[name] = image_numpy
-        return input_feed
+    def __del__(self):
+        self.net = None
 
-    def forward(self, image_numpy):
-        '''
-        image_numpy = image.transpose(2, 0, 1)
-        # image_numpy = image_numpy[np.newaxis, :]
-        # onnx_session.run([output_name], {input_name: x})
-        # :param image_numpy:
-        # :return:
-        '''
-        # image_numpy = image_numpy.transpose(2, 0, 1)
-        # 输入数据的类型必须与模型一致,以下三种写法都是可以的
-        # scores, boxes = self.onnx_session.run(None, {self.input_name: image_numpy})
-        # scores, boxes = self.onnx_session.run(self.output_name, input_feed={self.input_name: iimage_numpy})
-        input_feed = self.get_input_feed(self.input_name, image_numpy)
-        scores = self.onnx_session.run(self.output_name, input_feed=input_feed)[0]
-        return scores
+    def __call__(self, img):
+        img_h = img.shape[0]
+        img_w = img.shape[1]
 
-model = ONNXModel('test.onnx')
+        # mat_in = ncnn.Mat.from_pixels_resize(
+        #     img,
+        #     ncnn.Mat.PixelType.PIXEL_BGR,
+        #     img.shape[1],
+        #     img.shape[0],
+        #     self.target_size,
+        #     self.target_size,
+        # )
+
+        mat_in = ncnn.Mat(img)
+
+        # mat_in.substract_mean_normalize(self.mean_vals, self.norm_vals)
+
+        ex = self.net.create_extractor()
+        ex.set_num_threads(self.num_threads)
+
+        ex.input("input", mat_in)
+        
+        ret, mat_out = ex.extract("output")
+        # print("%d %d %d\n", mat_out.w, mat_out.h, mat_out.c)
+
+        out = np.array(mat_out)
+        return out
 
 
+model = SqueezeNet()
 
 # ================================================================== #
 #                说明：def验证                                             
@@ -147,8 +138,14 @@ def validate(val_loader, model, criterion):
     for i, (images, target) in enumerate(val_loader):
         # compute output
         # output = model(images)
-        output = model.forward(to_numpy(images))
-        output = torch.from_numpy(output)
+        output = torch.zeros(1,1000)
+        for image in images:            
+            _output = model(to_numpy(image))
+            _output = torch.from_numpy(_output)
+            _output = torch.unsqueeze(_output,0)
+            output = torch.cat((output, _output),0)            
+        output = output[1:]      
+            
         # output = output.argmax(axis=1)
         # print(out)
         loss = criterion(output, target)

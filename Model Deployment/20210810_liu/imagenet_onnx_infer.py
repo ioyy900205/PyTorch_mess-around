@@ -1,7 +1,7 @@
 '''
 Date: 2021-08-10 14:12:17
 LastEditors: Liuliang
-LastEditTime: 2021-08-10 15:01:12
+LastEditTime: 2021-08-17 11:11:54
 Description: onnx在imagenet上的推理验证
 '''
 import argparse
@@ -123,7 +123,7 @@ class ONNXModel():
         scores = self.onnx_session.run(self.output_name, input_feed=input_feed)[0]
         return scores
 
-model = ONNXModel('test.onnx')
+model = ONNXModel('resnet18.onnx')
 
 
 

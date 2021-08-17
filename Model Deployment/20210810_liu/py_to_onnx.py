@@ -1,7 +1,7 @@
 '''
 Date: 2021-08-10 10:12:17
 LastEditors: Liuliang
-LastEditTime: 2021-08-10 15:19:34
+LastEditTime: 2021-08-17 14:04:07
 Description: 
 '''
 import torch
@@ -11,13 +11,13 @@ import torchvision
 #                说明：torch to onnx                                             
 # ================================================================== #	
 
-model = torchvision.models.resnet152(pretrained=True)
+model = torchvision.models.resnet50(pretrained=True)
 batch_size = 1 
 input_shape = (3, 224, 224)   
 model.eval()
 x = torch.randn(batch_size, *input_shape)   # 生成张量
 
-export_onnx_file = "test.onnx"		# 目的ONNX文件名
+export_onnx_file = "resnet50.onnx"		# 目的ONNX文件名
 torch.onnx.export(model,
                     x,
                     export_onnx_file,
